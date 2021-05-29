@@ -1,0 +1,54 @@
+#!/bin/bash
+
+if [[ $1 = "" ]]
+then
+    echo "Err: Операция не выбрана (create, remove, rename)"
+fi 
+
+if [[ $1 = "create" ]]
+then
+    if [[ $2 = "" ]]
+    then
+        echo "Кодовое имя проекта не выбрано"
+    fi
+    
+    if [[ $3 = "" ]]
+    then
+        echo "Имя проекта не выбрано"
+    fi
+    
+    projectCodeName=$2
+    projectPath="/var/www/$projectCodeName.l"
+    projectName=$3
+    configFile="server {
+        listen 80;
+        root $projectPath;
+        index index.php index.html index.htm index.nginx-debian.html;
+        server_name $projectCodeName.l;
+        location / {
+                try_files \$uri \$uri/ =404;
+        }
+        location ~ \.php$ {
+                include snippets/fastcgi-php.conf;
+                fastcgi_pass unix:/var/run/php/php7.2-fpm.sock;
+        }
+        location ~ /\.ht {
+                deny all;
+        }
+    }"
+    
+    configPath="/etc/nginx/sites-available/$projectCodeName.l"
+
+    sudo mkdir $projectPath
+    echo $projectName | sudo tee "$projectPath/projectname" >/dev/null
+
+    echo "$configFile" | sudo tee $configPath >/dev/null
+    sudo ln -s $configPath "/etc/nginx/sites-enabled/"
+    echo "127.0.0.1 $projectCodeName.l" | sudo tee -a "/etc/hosts" >/dev/null
+    
+    sudo chmod -R +777 $projectPath
+
+    subl $projectPath
+    subl $configPath
+    sudo systemctl restart nginx
+fi
